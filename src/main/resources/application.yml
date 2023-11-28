@@ -1,0 +1,99 @@
+# Atomikos Library Configurations:
+com:
+  atomikos:
+    icatch:
+      default_jta_timeout: 10
+      threaded_2pc: true
+
+jta:
+  enabled: true
+  service: com.atomikos.icatch.standalone.UserTransactionServiceFactory
+  max-actives: 200
+  enable-logging: false
+
+
+
+# Multiple XA Datasources to be used in Jobs
+# Beans for these datasources are created dynamically using 'uniqueResourceName' as bean's name.
+# 
+  atomikos:
+   dBConnections:
+      - uniqueResourceName: sourceDBSlave  # This datasource points to the source DB. Here we are using replicated DB for source DB.
+        maxPoolSize: 5
+        minPoolSize: 1
+        maxLifeTime: 20000
+        borrowConnection-timeout: 10000
+        xaDataSourceClassName: com.mysql.cj.jdbc.MysqlXADataSource # To support distributed transactions accross Multiple MySql servers
+        xaProperties:
+          user: root
+          password: root
+          url: jdbc:mysql://localhost:3306/traveldatatest
+
+      - uniqueResourceName: targetDBSource   # This datasource points to the target DB. i.e. Where data needs to be stored for archival.
+        maxPoolSize: 5
+        minPoolSize: 1
+        maxLifeTime: 20000
+        borrowConnectionTimeout: 10000
+        xaDataSourceClassName: com.mysql.cj.jdbc.MysqlXADataSource
+        xaProperties:
+          user: root
+          password: root
+          url: jdbc:mysql://localhost:3306/traveldataarchive
+
+      - uniqueResourceName: sourceDBMaster   # This datasource points to the DB from where we want to clean data. Not required for non-replicated source DB.
+        maxPoolSize: 5
+        minPoolSize: 1
+        maxLifeTime: 20000
+        borrowConnectionTimeout: 10000
+        xaDataSourceClassName: com.mysql.cj.jdbc.MysqlXADataSource
+        xaProperties:
+          user: root
+          password: root
+          url: jdbc:mysql://localhost:3306/traveldataremove
+
+jobconfig:
+   applications:
+      - name: tdg
+        jobs:
+        # This job contains 3 tasks.
+        # 1. dataReadTask: Defines a query to collect Ids from tables specified in 'tables' section.
+        # 2. dataCopyTask: Copies data from dataSource of 'dataReadTask' using collected Ids.
+        # 3. dataCleanUpTask: Cleans up Ids collected during 'dataReadTask' from specified 
+        - type: archiveJob
+          enabled: true
+          transactionEnabled: true
+          transactionTimeout: 300
+          dataReadTask:
+            dataSource: sourceDBSlave
+            daysToRetainData: 30
+            queryTableList:
+              - query: "SELECT fd.id as feedId, fdpt.id as feedPartId, pdj.id as parseDataJsonId FROM   SFTPFeed fd INNER JOIN SFTPFeedPart fdpt on fd.id = fdpt.sftpFeedId INNER JOIN ParsedDataJSON pdj on fd.Id = pdj.feedId
+                            where fd.parseStatus ='PARSED' and fdpt.parseStatus='PARSED' and ( fd.totalParts = fd.partsJSONSyncedWithGRID and fd.totalParts<>-1)
+                            and pdj.feedsource='SFTP' and pdj.syncStatus='SUCCESSFULLY_MAPPED' and pdj.syncStatusDt < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ?daysToRetainData DAY)"
+                tables:
+                 - name: sftpfeed
+                   idAlias: feedId		# Alias of column used in 'query' for this table
+
+                 - name: sftpfeedpart
+                   idAlias: feedPartId
+
+                 - name: parseddatajson
+                   idAlias: parseDataJsonId
+
+          dataCopyTask:
+            dataSource: targetDBSource
+
+          dataCleanUpTask:
+            dataSource: sourceDBMaster
+
+        - type: dataDumpingJob
+          enabled: false
+          transactionEnabled: false
+          SQLDumpTask:
+            savePath: D:/random/sql/
+            
+        - type: backupJob
+          enabled: false
+          transactionEnabled: false
+          s3StorageTask:
+            s3BucketName: grid-archive-test  
