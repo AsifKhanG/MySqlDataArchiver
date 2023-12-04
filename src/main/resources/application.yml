@@ -71,9 +71,7 @@ jobconfig:
             dataSource: sourceDBSlave
             daysToRetainData: 30
             queryTableList:
-              - query: "SELECT fd.id as feedId, fdpt.id as feedPartId, pdj.id as parseDataJsonId FROM   SFTPFeed fd INNER JOIN SFTPFeedPart fdpt on fd.id = fdpt.sftpFeedId INNER JOIN ParsedDataJSON pdj on fd.Id = pdj.feedId
-                            where fd.parseStatus ='PARSED' and fdpt.parseStatus='PARSED' and ( fd.totalParts = fd.partsJSONSyncedWithGRID and fd.totalParts<>-1)
-                            and pdj.feedsource='SFTP' and pdj.syncStatus='SUCCESSFULLY_MAPPED' and pdj.syncStatusDt < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ?daysToRetainData DAY)"
+              - query: ""
                 tables:
                  - name: sftpfeed
                    idAlias: feedId		# Alias of column used in 'query' for this table
