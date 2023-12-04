@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.Properties;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.boot.jta.atomikos.AtomikosDataSourceBean;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 
+import com.atomikos.jdbc.AtomikosDataSourceBean;
 import com.gr.archive.model.db.DataSource;
 
 import lombok.AllArgsConstructor;
