@@ -1,3 +1,4 @@
+![LOGO](https://github.com/AsifKhanG/MySqlDataArchiver/blob/main/logo-small.png?raw=true)
 # MySql Data Archiver
 
 ## Features:
